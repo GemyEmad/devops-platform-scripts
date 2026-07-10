@@ -1,0 +1,18 @@
+controller:
+  replicaCount: 2
+  service:
+    type: LoadBalancer
+  ingressClassResource:
+    name: nginx
+    enabled: true
+    default: true
+  admissionWebhooks:
+    enabled: true
+  metrics:
+    enabled: true
+  config:
+    use-forwarded-headers: "true"
+    compute-full-forwarded-for: "true"
+    proxy-body-size: "100m"
+    proxy-read-timeout: "300"
+    proxy-send-timeout: "300"

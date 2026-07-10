@@ -1,0 +1,8 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: ${METALLB_IP_POOL_NAME}
+  namespace: ${METALLB_NAMESPACE}
+spec:
+  addresses:
+    - ${METALLB_IP_RANGE}

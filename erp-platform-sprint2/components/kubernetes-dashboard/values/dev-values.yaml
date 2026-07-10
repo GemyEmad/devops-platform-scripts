@@ -1,0 +1,12 @@
+app:
+  mode: dashboard
+kong:
+  enabled: true
+metricsScraper:
+  enabled: true
+cert-manager:
+  enabled: false
+nginx:
+  enabled: false
+extras:
+  manifests: []

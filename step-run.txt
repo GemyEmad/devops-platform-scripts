@@ -1,0 +1,49 @@
+mkdir -p /opt
+
+cd /opt
+
+ls -lh
+
+unzip erp-dev-infra-sprint1.zip
+
+cd /opt/erp-dev-infra
+
+vim env/dev.env
+
+هنا هتعدل:
+
+IP الـ Control Plane
+Hostname
+Worker IP
+Pod Network
+Interface
+أي متغيرات خاصة بالبيئة
+
+chmod +x scripts/*.sh
+
+sudo ./scripts/install-control-plane.sh
+
+kubectl get nodes -o wide
+
+kubectl get pods -A
+
+cat /opt/erp-dev-infra/join-worker.sh
+
+---------------------------
+
+unzip erp-platform-sprint2.zip
+
+cd /opt/erp-platform-sprint2
+
+vim environments/dev/platform.env
+
+chmod +x scripts/*.sh
+chmod +x components/*/*.sh
+
+
+kubectl get nodes
+kubectl get pods -A
+kubectl get svc -A
+
+
+vim scripts/install-control-plane.sh

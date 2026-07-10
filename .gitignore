@@ -1,0 +1,8 @@
+*.log
+*.tmp
+*.bak
+*.swp
+
+join-worker.sh
+
+.env.local

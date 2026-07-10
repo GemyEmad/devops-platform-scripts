@@ -1,0 +1,211 @@
+###### create Worker01 #####
+
+mkdir -p /opt/erp-environment
+cd /opt/erp-environment
+
+touch 01-base.sh
+vim 01-base.sh
+
+#!/usr/bin/env bash
+
+set -e
+
+echo "==============================="
+echo " Rocky Linux Base Configuration"
+echo "==============================="
+
+echo "[1/8] Updating System..."
+dnf update -y
+
+echo "[2/8] Installing Packages..."
+dnf install -y \
+vim \
+wget \
+curl \
+git \
+tar \
+unzip \
+net-tools \
+bind-utils \
+bash-completion \
+chrony \
+firewalld \
+iproute \
+lsof
+
+echo "[3/8] Enabling Services..."
+systemctl enable --now firewalld
+systemctl enable --now chronyd
+
+echo "[4/8] Disabling Swap..."
+swapoff -a
+sed -i '/ swap / s/^/#/' /etc/fstab
+
+echo "[5/8] Loading Kernel Modules..."
+cat <<EOF >/etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+modprobe overlay
+modprobe br_netfilter
+
+echo "[6/8] Configuring Kernel..."
+cat <<EOF >/etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables=1
+net.bridge.bridge-nf-call-ip6tables=1
+net.ipv4.ip_forward=1
+EOF
+
+sysctl --system
+
+echo "[7/8] Setting SELinux..."
+setenforce 0 || true
+sed -i 's/^SELINUX=.*/SELINUX=permissive/' /etc/selinux/config
+
+echo "[8/8] Base Configuration Completed."
+
+echo "=================================="
+echo " Server is Ready for Kubernetes"
+echo "=================================="
+
+chmod +x 01-base.sh
+./01-base.sh
+
+-----------------------------------------------------------------------------------------------------------------------------------------------
+touch 02-worker-ntp.sh
+vim 02-worker-ntp.sh
+
+
+#!/usr/bin/env bash
+
+set -e
+
+CONTROL_PLANE_IP="0000"
+
+echo "=================================="
+echo " Configure NTP Client"
+echo "=================================="
+
+cp /etc/chrony.conf /etc/chrony.conf.bak
+
+cat > /etc/chrony.conf <<EOF
+server ${CONTROL_PLANE_IP} iburst
+
+driftfile /var/lib/chrony/drift
+
+makestep 1.0 3
+
+rtcsync
+
+logdir /var/log/chrony
+EOF
+
+systemctl restart chronyd
+
+chronyc tracking
+chronyc sources
+
+echo ""
+echo "=================================="
+echo " Worker NTP Ready"
+echo "=================================="
+
+
+chmod +x 02-worker-ntp.sh
+./02-worker-ntp.sh
+-----------------------------------------------------------------------------------------------------------------------------------------------
+touch 03-k8s-prerequisites.sh
+vim 03-k8s-prerequisites.sh
+
+#!/usr/bin/env bash
+
+set -e
+
+echo "=================================="
+echo " Kubernetes Prerequisites"
+echo "=================================="
+
+echo "[1/8] Install Containerd..."
+dnf install -y containerd
+
+mkdir -p /etc/containerd
+
+containerd config default > /etc/containerd/config.toml
+
+sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+
+systemctl enable --now containerd
+
+echo "[2/8] Disable SELinux..."
+setenforce 0 || true
+sed -i 's/^SELINUX=.*/SELINUX=permissive/' /etc/selinux/config
+
+echo "[3/8] Configure Kubernetes Repository..."
+
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://pkgs.k8s.io/core:/stable:/v1.33/rpm/
+enabled=1
+gpgcheck=1
+gpgkey=https://pkgs.k8s.io/core:/stable:/v1.33/rpm/repodata/repomd.xml.key
+exclude=kubelet kubeadm kubectl
+EOF
+
+echo "[4/8] Install Kubernetes..."
+dnf install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+
+echo "[5/8] Enable kubelet..."
+systemctl enable --now kubelet
+
+echo "[6/8] Enable Containerd..."
+systemctl restart containerd
+
+echo "[6.1/8] Check Containerd Status..."
+systemctl status containerd --no-pager
+
+echo "[7/8] Verify..."
+kubeadm version
+kubectl version --client
+containerd --version
+
+echo "[8/8] Done."
+
+echo ""
+echo "=================================="
+echo " Kubernetes Packages Installed"
+echo "=================================="
+
+
+chmod +x 03-k8s-prerequisites.sh
+./03-k8s-prerequisites.sh
+-----------------------------------------------------------------------------------------------------------------------------------------------
+touch 04-worker-join.sh
+vim 04-worker-join.sh
+
+#!/usr/bin/env bash
+
+set -e
+
+echo "=================================="
+echo " Kubernetes Worker Join"
+echo "=================================="
+
+echo "Paste kubeadm join command below:"
+read -r JOIN_CMD
+
+echo ""
+echo "Joining Cluster..."
+
+$JOIN_CMD
+
+echo ""
+echo "=================================="
+echo " Worker Joined Successfully"
+echo "=================================="
+
+systemctl status kubelet --no-pager
+
+chmod +x 04-worker-join.sh
+./04-worker-join.sh

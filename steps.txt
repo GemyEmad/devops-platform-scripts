@@ -1,0 +1,38 @@
+فكّه على control-plane01 تحت /opt:
+
+cd /opt
+unzip erp-dev-infra-sprint1.zip
+cd /opt/erp-dev-infra
+
+vim env/dev.env
+
+chmod +x scripts/*.sh
+sudo ./scripts/install-control-plane.sh
+
+
+
+
+kubectl get nodes -o wide
+kubectl get pods -A
+cat /opt/erp-dev-infra/join-worker.sh
+
+
+
+
+
+
+
+
+---------------------------------------------------
+
+cd /opt
+unzip erp-platform-sprint2.zip
+cd /opt/erp-platform-sprint2
+
+vim environments/dev/platform.env
+chmod +x scripts/*.sh components/*/*.sh
+sudo ./scripts/install-platform.sh
+
+kubectl get nodes -o wide
+kubectl get svc -A
+kubectl get pods -A
